@@ -7,7 +7,7 @@ import requests
 import time
 
 # --- Konfigurasi Klien ---
-SERVER_URL = ""
+SERVER_URL = "http://192.168.0.104:8889"
 
 # --- Auto‐allocate session file A/B dengan lock sederhana ---
 def allocate_session_file():
@@ -236,6 +236,7 @@ def draw_my_treasure_grid(off_x, off_y, gs, ts, label, pos, hover_cell=None, hov
                         pygame.draw.rect(screen, COLOR_TREASURE, rect.inflate(-8,  -8))
 
 
+
 # --- Main game loop ---
 def game_loop():
     global PLAYER_ID, session_should_delete
@@ -313,7 +314,6 @@ def game_loop():
         else:
             screen.fill(COLOR_BG)
 
-        # header
         draw_text(PLAYER_ID, font_xl, COLOR_GOLD, screen, btn_cx, 35, center=True)
         draw_text(state['action_message'], font_lg, COLOR_TEXT, screen, WINDOW_W // 2, 80, center=True)
         draw_hp("Opponent", state['opponent_hp'], STARTING_HP, dig_x, 25)
