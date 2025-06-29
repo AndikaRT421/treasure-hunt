@@ -229,7 +229,11 @@ def draw_my_treasure_grid(off_x, off_y, gs, ts, label, pos, hover_cell=None, hov
                         img = pygame.transform.scale(TREASURE_IMG, (CELL_SIZE - 10, CELL_SIZE - 10))
                         screen.blit(img, rect.inflate(-8, -8).topleft)
                     else:
-                        pygame.draw.rect(screen, COLOR_TREASURE, rect.inflate(-8, -8))
+                        if TREASURE_IMG:
+                        img = pygame.transform.scale(TREASURE_IMG, (CELL_SIZE - 10, CELL_SIZE - 10))
+                        screen.blit(img, rect.inflate(-8, -8).topleft)
+                    else:
+                        pygame.draw.rect(screen, COLOR_TREASURE, rect.inflate(-8,  -8))
 
 
 # --- Main game loop ---
@@ -309,6 +313,7 @@ def game_loop():
         else:
             screen.fill(COLOR_BG)
 
+        # header
         draw_text(PLAYER_ID, font_xl, COLOR_GOLD, screen, btn_cx, 35, center=True)
         draw_text(state['action_message'], font_lg, COLOR_TEXT, screen, WINDOW_W // 2, 80, center=True)
         draw_hp("Opponent", state['opponent_hp'], STARTING_HP, dig_x, 25)
@@ -434,6 +439,71 @@ def game_loop():
 
     pygame.quit()
     sys.exit()
+
+def main_menu():
+    # Fallback flags
+    use_default_bg = False
+    use_default_title_font = False
+    use_default_button_font = False
+
+    # Load background
+    try:
+        bg_image = pygame.image.load("asset/Main_menu.jpg")
+        bg_image = pygame.transform.scale(bg_image, (WINDOW_W, WINDOW_H))
+    except:
+        use_default_bg = True
+        bg_image = pygame.Surface((WINDOW_W, WINDOW_H))
+        bg_image.fill((0, 0, 0))  # fallback: hitam
+
+    # Load fonts
+    try:
+        title_font = pygame.font.Font("asset/MightySouly-lxggD.ttf", 96)
+    except:
+        title_font = pygame.font.SysFont(None, 96, bold=True)
+        use_default_title_font = True
+
+    try:
+        button_font = pygame.font.Font("asset/rimouski sb.otf", 48)
+    except:
+        button_font = pygame.font.SysFont(None, 48)
+        use_default_button_font = True
+
+    # Tombol Start
+    start_btn_rect = pygame.Rect(WINDOW_W // 2 - 150, WINDOW_H // 2, 300, 80)
+    btn_color_normal = (190, 81, 3) if not use_default_bg else (0, 200, 0)  # fallback: hijau
+    btn_color_hover  = (220, 110, 30) if not use_default_bg else (0, 255, 0)
+
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT or (ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE):
+                pygame.quit()
+                sys.exit()
+            if ev.type == pygame.MOUSEBUTTONDOWN:
+                if start_btn_rect.collidepoint(mouse_pos):
+                    return  # Start game
+
+        screen.blit(bg_image, (0, 0))
+
+        # Judul
+        title_color = (0, 0, 0) if not use_default_bg else (255, 255, 255)
+        draw_text("Treasure Hunt", title_font, title_color,
+                  screen, WINDOW_W // 2, 150, center=True)
+
+        # Tombol Start dengan efek hover
+        if start_btn_rect.collidepoint(mouse_pos):
+            btn_color = btn_color_hover
+        else:
+            btn_color = btn_color_normal
+
+        pygame.draw.rect(screen, btn_color, start_btn_rect, border_radius=12)
+        draw_text("Start Game", button_font, (255, 255, 255),
+                  screen, start_btn_rect.centerx, start_btn_rect.centery, center=True)
+
+        pygame.display.flip()
+        clock.tick(30)
+
 
 def main_menu():
     # Fallback flags
