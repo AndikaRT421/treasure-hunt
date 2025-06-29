@@ -79,13 +79,11 @@ class GameState:
                     self.treasure_pos[player_id] = (y, x)
                     self.turn = opponent_id
                     self.action_message = f"Pemain {player_id} memindahkan hartanya. Giliran Pemain {opponent_id}."
+                    self.dig_marks[opponent_id] = [[None] * GRID_SIZE for _ in range(GRID_SIZE)]
                     return {"success": True}
                 return {"success": False, "message": "Lokasi pemindahan tidak valid."}
 
             elif action_type == 'dig':
-                if self.dig_marks[player_id][y][x] is not None:
-                    return {"success": False, "message": "Anda sudah menggali di sini."}
-
                 opp_treasure = self.treasure_pos[opponent_id]
                 ty, tx = opp_treasure
                 if ty <= y < ty + TREASURE_SIZE and tx <= x < tx + TREASURE_SIZE:
@@ -101,6 +99,8 @@ class GameState:
                     self.action_message = f"Pemain {player_id} gagal menemukan harta. Giliran Pemain {opponent_id}."
                 
                 self.turn = opponent_id
+                if self.game_phase == "BATTLE":
+                    self.dig_marks[opponent_id] = [[None] * GRID_SIZE for _ in range(GRID_SIZE)]
                 return {"success": True}
             
             return {"success": False, "message": "Aksi tidak dikenal."}
