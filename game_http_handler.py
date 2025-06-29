@@ -206,6 +206,9 @@ class HttpServer:
             return self.response(400, 'Bad Request', {'error': 'Invalid JSON body'})
 
         if object_address == '/join':
+            if game_state.game_phase == "ENDED":
+                game_state.reset_game()
+
             player_id = game_state.add_player()
             if player_id:
                 return self.response(200, 'OK', {'player_id': player_id})

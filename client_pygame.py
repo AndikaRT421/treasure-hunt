@@ -5,7 +5,7 @@ import json
 import time
 
 # --- Konfigurasi Klien ---
-SERVER_URL = ""
+SERVER_URL = "" # Isi URL Server Anda di sini
 PLAYER_ID = None
 GAME_STATE = None
 
