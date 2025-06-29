@@ -7,7 +7,7 @@ import requests
 import time
 
 # --- Konfigurasi Klien ---
-SERVER_URL = ""
+SERVER_URL = "http://192.168.0.104:8889"
 
 # --- Auto‐allocate session file A/B dengan lock sederhana ---
 def allocate_session_file():
@@ -72,6 +72,10 @@ COLOR_HP_BORDER   = (0,255,0)
 COLOR_HIT         = (255,0,0)
 COLOR_MISS        = (150,150,150)
 COLOR_PENDING     = (255,255,0)
+COLOR_GRID_BASE      = (40, 40, 40)
+COLOR_HOVER_BLUE     = (0, 191, 255)
+COLOR_HOVER_ORANGE   = (255, 140, 0)
+COLOR_BTN_HOVER = (255, 200, 100) 
 
 pygame.init()
 screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
@@ -84,7 +88,7 @@ clock   = pygame.time.Clock()
 
 # Load background dan treasure image
 try:
-    ARENA_BG = pygame.image.load("asset/arena_bg.jpg")
+    ARENA_BG = pygame.image.load("asset/arena_bg2.png")
     ARENA_BG = pygame.transform.scale(ARENA_BG, (WINDOW_W, WINDOW_H))
 except:
     ARENA_BG = None  # fallback: bg warna polos
@@ -149,6 +153,16 @@ def draw_text(text, font, color, surf, x, y, center=False):
     surf.blit(obj, rect)
     return rect
 
+def draw_button(rect, label, is_hovered=False, selected=False):
+    if selected:
+        color = COLOR_BTN_ACTIVE
+    elif is_hovered:
+        color = COLOR_BTN_HOVER
+    else:
+        color = COLOR_BTN
+    pygame.draw.rect(screen, color, rect, border_radius=8)
+    draw_text(label, font_md, COLOR_TEXT, screen, rect.centerx, rect.centery, center=True)
+
 def draw_hp(label, hp, max_hp, x, y):
     tr = draw_text(f"{label}:", font_md, COLOR_TEXT, screen, x, y)
     box, spacing = 30, 6
@@ -170,7 +184,7 @@ def pixel_to_grid(mx, my, off_x, off_y, gs):
         return gy, gx
     return None
 
-def draw_digging_grid(off_x, off_y, gs, label, marks):
+def draw_digging_grid(off_x, off_y, gs, label, marks, hover_cell=None, hover_color=None):
     draw_text(label, font_md, COLOR_TEXT, screen, off_x, off_y - 50)
     for r in range(gs):
         for c in range(gs):
@@ -179,7 +193,8 @@ def draw_digging_grid(off_x, off_y, gs, label, marks):
                 off_y + r*(CELL_SIZE+MARGIN),
                 CELL_SIZE, CELL_SIZE
             )
-            pygame.draw.rect(screen, COLOR_DIG_GRID_BG, rect)
+            base_color = hover_color if hover_cell == (r, c) else COLOR_GRID_BASE
+            pygame.draw.rect(screen, base_color, rect)
             pygame.draw.rect(screen, COLOR_GRID_LINE, rect, 1)
             m = marks[r][c]
             if m == 'hit':
@@ -187,7 +202,8 @@ def draw_digging_grid(off_x, off_y, gs, label, marks):
             elif m == 'miss':
                 pygame.draw.rect(screen, COLOR_MISS, rect.inflate(-8,-8))
 
-def draw_my_treasure_grid(off_x, off_y, gs, ts, label, pos):
+
+def draw_my_treasure_grid(off_x, off_y, gs, ts, label, pos, hover_cell=None, hover_color=None):
     draw_text(label, font_md, COLOR_TEXT, screen, off_x, off_y - 50)
     for r in range(gs):
         for c in range(gs):
@@ -196,7 +212,8 @@ def draw_my_treasure_grid(off_x, off_y, gs, ts, label, pos):
                 off_y + r*(CELL_SIZE+MARGIN),
                 CELL_SIZE, CELL_SIZE
             )
-            pygame.draw.rect(screen, COLOR_MY_GRID_BG, rect)
+            base_color = hover_color if hover_cell == (r, c) else COLOR_GRID_BASE
+            pygame.draw.rect(screen, base_color, rect)
             pygame.draw.rect(screen, COLOR_GRID_LINE, rect, 1)
     if pos:
         ty, tx = pos
@@ -214,6 +231,7 @@ def draw_my_treasure_grid(off_x, off_y, gs, ts, label, pos):
                     else:
                         pygame.draw.rect(screen, COLOR_TREASURE, rect.inflate(-8, -8))
 
+
 # --- Main game loop ---
 def game_loop():
     global PLAYER_ID, session_should_delete
@@ -229,26 +247,32 @@ def game_loop():
             time.sleep(2)
             break
 
-        # jika phase sudah ENDED, tandai agar session.json dihapus saat exit
         if state['game_phase'] == "ENDED":
             session_should_delete = True
 
-        gs = state['grid_size']; ts = state['treasure_size']
-        pix = gs*(CELL_SIZE+MARGIN)
-        HEADER_Y = 140; GAP = 120
-        total_w  = pix*2 + GAP
-        start_x  = (WINDOW_W - total_w)//2
-        dig_x    = start_x
-        my_x     = start_x + pix + GAP
-        grid_y   = HEADER_Y + ((WINDOW_H-HEADER_Y-120)-pix)//2
-        btn_y    = grid_y + pix + 35
-        txt_y    = btn_y + 75
-        btn_cx   = start_x + pix + GAP//2
-        btn_move = pygame.Rect(btn_cx-140, btn_y, 120, 50)
-        btn_dig  = pygame.Rect(btn_cx+20, btn_y, 120, 50)
+        gs = state['grid_size']
+        ts = state['treasure_size']
+        pix = gs * (CELL_SIZE + MARGIN)
+        HEADER_Y = 140
+        GAP = 120
+        total_w = pix * 2 + GAP
+        start_x = (WINDOW_W - total_w) // 2
+        dig_x = start_x
+        my_x = start_x + pix + GAP
+        grid_y = HEADER_Y + ((WINDOW_H - HEADER_Y - 120) - pix) // 2
+        btn_y = grid_y + pix + 35
+        txt_y = btn_y + 75
+        btn_cx = start_x + pix + GAP // 2
+        btn_move = pygame.Rect(btn_cx - 140, btn_y, 120, 50)
+        btn_dig = pygame.Rect(btn_cx + 20, btn_y, 120, 50)
 
-        phase   = state['game_phase']
+        phase = state['game_phase']
         my_turn = (state['turn'] == PLAYER_ID)
+
+        # Cek posisi mouse
+        mouse_pos = pygame.mouse.get_pos()
+        hover_my = pixel_to_grid(mouse_pos[0], mouse_pos[1], my_x, grid_y, gs)
+        hover_dig = pixel_to_grid(mouse_pos[0], mouse_pos[1], dig_x, grid_y, gs)
 
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT or (ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE):
@@ -259,7 +283,7 @@ def game_loop():
                     cell = pixel_to_grid(mx, my, my_x, grid_y, gs)
                     if cell:
                         y, x = cell
-                        if x <= gs-ts and y <= gs-ts:
+                        if x <= gs - ts and y <= gs - ts:
                             send_placement(PLAYER_ID, y, x)
                             selected = None
                 elif phase == "BATTLE" and my_turn:
@@ -275,7 +299,7 @@ def game_loop():
                             target = pixel_to_grid(mx, my, my_x, grid_y, gs)
                         if target:
                             y, x = target
-                            if selected == 'move' and (x > gs-ts or y > gs-ts):
+                            if selected == 'move' and (x > gs - ts or y > gs - ts):
                                 continue
                             send_action(PLAYER_ID, selected, y, x)
                             selected = None
@@ -285,48 +309,125 @@ def game_loop():
         else:
             screen.fill(COLOR_BG)
 
-        # header
         draw_text(PLAYER_ID, font_xl, COLOR_GOLD, screen, btn_cx, 35, center=True)
-        draw_text(state['action_message'], font_lg, COLOR_TEXT, screen, WINDOW_W//2, 80, center=True)
-        # hp bars
+        draw_text(state['action_message'], font_lg, COLOR_TEXT, screen, WINDOW_W // 2, 80, center=True)
         draw_hp("Opponent", state['opponent_hp'], STARTING_HP, dig_x, 25)
-        draw_hp("My HP",    state['my_hp'],       STARTING_HP, my_x,  25)
-        # grids
-        draw_digging_grid(dig_x, grid_y, gs, "Opponent's Grid", state['my_dig_marks'])
-        draw_my_treasure_grid(my_x, grid_y, gs, ts, "Your Treasure", state['my_treasure_pos'])
-        # bottom area
+        draw_hp("My HP", state['my_hp'], STARTING_HP, my_x, 25)
+
+        # Identifikasi apakah Player A atau B
+        is_player_a = PLAYER_ID.lower().endswith("a")
+
+        # Warna hover dan label teks disesuaikan berdasarkan player
+        hover_color_my = (0, 0, 180) if is_player_a else (255, 140, 0)
+        hover_color_dig = (255, 140, 0) if is_player_a else (0, 0, 180)
+
+        # Warna teks label grid
+        label_color_opponent = (255, 140, 0) if is_player_a else (0, 70, 160)
+        label_color_treasure = (0, 191, 255) if is_player_a else (255, 140, 0)
+
+        # Draw Opponent's Grid
+        # Draw background box and label for Opponent's Grid
+        label_text = "Opponent's Grid"
+        label_surface = font_md.render(label_text, True, label_color_opponent)
+        label_rect = label_surface.get_rect(topleft=(dig_x, grid_y - 60))
+        box_rect = pygame.Rect(label_rect.x - 10, label_rect.y - 5, label_rect.width + 20, label_rect.height + 10)
+        pygame.draw.rect(screen, (100, 100, 100), box_rect, border_radius=6)  # abu-abu
+        screen.blit(label_surface, label_rect)
+        for r in range(gs):
+            for c in range(gs):
+                rect = pygame.Rect(
+                    dig_x + c * (CELL_SIZE + MARGIN),
+                    grid_y + r * (CELL_SIZE + MARGIN),
+                    CELL_SIZE, CELL_SIZE
+                )
+                if hover_dig == (r, c):
+                    pygame.draw.rect(screen, hover_color_dig, rect)
+                else:
+                    pygame.draw.rect(screen, (60, 60, 60), rect)
+
+                if state['my_dig_marks'][r][c] == 'hit':
+                    pygame.draw.rect(screen, COLOR_HIT, rect.inflate(-8, -8))
+                elif state['my_dig_marks'][r][c] == 'miss':
+                    pygame.draw.rect(screen, COLOR_MISS, rect.inflate(-8, -8))
+
+                pygame.draw.rect(screen, COLOR_GRID_LINE, rect, 1)
+
+        # Draw My Treasure Grid
+        # Draw background box and label for Your Treasure
+        label_text = "Your Treasure"
+        label_surface = font_md.render(label_text, True, label_color_treasure)
+        label_rect = label_surface.get_rect(topleft=(my_x, grid_y - 60))
+        box_rect = pygame.Rect(label_rect.x - 10, label_rect.y - 5, label_rect.width + 20, label_rect.height + 10)
+        pygame.draw.rect(screen, (100, 100, 100), box_rect, border_radius=6)  # abu-abu
+        screen.blit(label_surface, label_rect)
+        for r in range(gs):
+            for c in range(gs):
+                rect = pygame.Rect(
+                    my_x + c * (CELL_SIZE + MARGIN),
+                    grid_y + r * (CELL_SIZE + MARGIN),
+                    CELL_SIZE, CELL_SIZE
+                )
+                if hover_my == (r, c):
+                    pygame.draw.rect(screen, hover_color_my, rect)
+                else:
+                    pygame.draw.rect(screen, (60, 60, 60), rect)
+
+                pygame.draw.rect(screen, COLOR_GRID_LINE, rect, 1)
+
+        if state['my_treasure_pos']:
+            ty, tx = state['my_treasure_pos']
+            for dy in range(ts):
+                for dx in range(ts):
+                    if tx + dx < gs and ty + dy < gs:
+                        rect = pygame.Rect(
+                            my_x + (tx + dx) * (CELL_SIZE + MARGIN),
+                            grid_y + (ty + dy) * (CELL_SIZE + MARGIN),
+                            CELL_SIZE, CELL_SIZE
+                        )
+                        if TREASURE_IMG:
+                            img = pygame.transform.scale(TREASURE_IMG, (CELL_SIZE - 10, CELL_SIZE - 10))
+                            screen.blit(img, rect.inflate(-8, -8).topleft)
+                        else:
+                            pygame.draw.rect(screen, COLOR_TREASURE, rect.inflate(-8, -8))
+
+        # Tombol dan info bawah
         if phase == "PLACEMENT":
             if state['my_treasure_pos'] is None:
                 draw_text("Klik di grid 'Your Treasure' untuk menempatkan harta.",
-                          font_md, COLOR_PENDING, screen, WINDOW_W//2, txt_y, center=True)
+                          font_md, COLOR_PENDING, screen, WINDOW_W // 2, txt_y, center=True)
             else:
                 draw_text("Menunggu pemain lain...", font_md, COLOR_TEXT,
-                          screen, WINDOW_W//2, txt_y, center=True)
+                          screen, WINDOW_W // 2, txt_y, center=True)
         elif phase == "BATTLE":
             if my_turn:
+                hover_move = btn_move.collidepoint(mouse_pos)
+                hover_dig = btn_dig.collidepoint(mouse_pos)
+
                 pygame.draw.rect(screen,
-                                 COLOR_BTN_ACTIVE if selected=='move' else COLOR_BTN,
-                                 btn_move, border_radius=8)
+                                COLOR_BTN_HOVER if hover_move else (COLOR_BTN_ACTIVE if selected == 'move' else COLOR_BTN),
+                                btn_move, border_radius=8)
                 draw_text("Move", font_md, COLOR_TEXT,
-                          screen, btn_move.centerx, btn_move.centery, center=True)
+                        screen, btn_move.centerx, btn_move.centery, center=True)
+
                 pygame.draw.rect(screen,
-                                 COLOR_BTN_ACTIVE if selected=='dig' else COLOR_BTN,
-                                 btn_dig, border_radius=8)
+                                COLOR_BTN_HOVER if hover_dig else (COLOR_BTN_ACTIVE if selected == 'dig' else COLOR_BTN),
+                                btn_dig, border_radius=8)
                 draw_text("Dig", font_md, COLOR_TEXT,
-                          screen, btn_dig.centerx, btn_dig.centery, center=True)
+                        screen, btn_dig.centerx, btn_dig.centery, center=True)
+
                 if selected:
                     draw_text(f"Mode: {selected.upper()}. Klik grid yang sesuai.",
-                              font_md, COLOR_PENDING, screen, WINDOW_W//2, txt_y, center=True)
+                            font_md, COLOR_PENDING, screen, WINDOW_W // 2, txt_y, center=True)
                 else:
                     draw_text("Giliran Anda! Pilih 'Move' atau 'Dig'.",
-                              font_md, COLOR_PENDING, screen, WINDOW_W//2, txt_y, center=True)
+                            font_md, COLOR_PENDING, screen, WINDOW_W // 2, txt_y, center=True)
             else:
                 draw_text(f"Giliran Pemain {state['turn']} untuk beraksi.",
-                          font_md, COLOR_TEXT, screen, WINDOW_W//2, txt_y, center=True)
+                          font_md, COLOR_TEXT, screen, WINDOW_W // 2, txt_y, center=True)
         elif phase == "ENDED":
-            msg = "Anda Menang!" if state['winner']==PLAYER_ID else "Anda Kalah."
+            msg = "Anda Menang!" if state['winner'] == PLAYER_ID else "Anda Kalah."
             draw_text(msg, font_lg, COLOR_PENDING,
-                      screen, WINDOW_W//2, WINDOW_H//2, center=True)
+                      screen, WINDOW_W // 2, WINDOW_H // 2, center=True)
 
         pygame.display.flip()
         clock.tick(10)

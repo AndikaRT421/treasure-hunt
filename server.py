@@ -87,8 +87,7 @@ class Server(threading.Thread):
     def run(self):
         self.my_socket.bind(('0.0.0.0', self.port))
         self.my_socket.listen(5)
-        server_ip = get_local_ip()
-        logging.warning(f"Server berjalan di {server_ip}:{self.port}")
+        logging.warning(f"Server berjalan di port {self.port}")
 
         while True:
             try:
