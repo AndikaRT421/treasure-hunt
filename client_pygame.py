@@ -7,7 +7,7 @@ import requests
 import time
 
 # --- Konfigurasi Klien ---
-SERVER_URL = "http://192.168.0.104:8889"
+SERVER_URL = ""
 
 # --- Auto‐allocate session file A/B dengan lock sederhana ---
 def allocate_session_file():
